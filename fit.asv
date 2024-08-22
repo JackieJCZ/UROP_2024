@@ -1,0 +1,44 @@
+function U = fit(X, C, lam, mu)
+    N = size(X.p, 2);
+    M_A = zeros(N, N); M_X = zeros(N,N);
+    int_nodes = setdiff(1:1:size(X.p, 2), X.e(1, :));
+    for face = 1:size(X.t,2)
+        s.index = X.t(:, face);
+        s.coords = X.p(:, s.index);
+        s.edges = s.coords(:, [3, 1, 2]) - s.coords(:, [2, 3, 1]);
+        for i = 1:3
+            u = mod(i, 3) + 1; v = mod(i+1, 3) + 1;
+            x = s.edges(:, u);
+            y = s.edges(:, v);
+            edge_len = norm(s.edges(:, i))^2;
+            cos_angle = -dot(x, y) / (norm(x) * norm(y));
+            cot_angle = cos_angle / sqrt(1 - cos_angle^2);
+            x1 = s.index(u); x2 = s.index(v); x3 = s.index(i);
+            M_A(x1, x2) = M_A(x1, x2) + cot_angle; % alpha ij
+            M_A(x2, x1) = M_A(x2, x1) + cot_angle; % beta ij
+
+            M_X(x2, x3) = M_X(x2, x3) + cot_angle / edge_len;
+            % delta ij
+            M_X(x1, x3) = M_X(x1, x3) + cot_angle / edge_len;
+            % gamma ij
+        end
+    end
+    M_A = M_A - diag(sum(M_A, 2));
+    M_X = M_X - diag(sum(M_X, 2));
+
+    
+
+    %disp(M_A)
+    %disp(M_X)
+    
+    num_bound = size(X.e, 2);
+    M = zeros(N + num_bound, N);
+    M(1:num_bound, N-num_bound+1:N) = eye(num_bound);
+    M(num_bound+1:N+num_bound, :) = lam * M_A + mu * M_X;
+
+    C_full = zeros(N + num_bound, 2);
+    C_full(1:num_bound, :) = C;
+
+    U = M \ C_full;
+end
+
